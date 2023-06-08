@@ -125,7 +125,9 @@ void MergeTreeDataPartWriterWide::addStreams(
             settings.max_compress_block_size,
             marks_compression_codec,
             settings.marks_compress_block_size,
-            settings.query_write_settings);
+            settings.query_write_settings,
+            settings.cryptographic_mode,
+            settings.hash_function);
     };
 
     ISerialization::SubstreamPath path;
@@ -146,7 +148,7 @@ ISerialization::OutputStreamGetter MergeTreeDataPartWriterWide::createStreamGett
         if (is_offsets && offset_columns.contains(stream_name))
             return nullptr;
 
-        return &column_streams.at(stream_name)->compressed_hashing;
+        return &column_streams.at(stream_name)->compressed_hashing.getBuf();
     };
 }
 
@@ -273,7 +275,7 @@ void MergeTreeDataPartWriterWide::writeSingleMark(
 void MergeTreeDataPartWriterWide::flushMarkToFile(const StreamNameAndMark & stream_with_mark, size_t rows_in_mark)
 {
     Stream & stream = *column_streams[stream_with_mark.stream_name];
-    WriteBuffer & marks_out = stream.compress_marks ? stream.marks_compressed_hashing : stream.marks_hashing;
+    WriteBuffer & marks_out = stream.compress_marks ? stream.marks_compressed_hashing.getBuf() : stream.marks_hashing.getBuf();
 
     writeIntBinary(stream_with_mark.mark.offset_in_compressed_file, marks_out);
     writeIntBinary(stream_with_mark.mark.offset_in_decompressed_block, marks_out);

@@ -4,7 +4,7 @@
 #include <IO/WriteBufferFromFile.h>
 #include <IO/WriteBufferFromFileBase.h>
 #include <Compression/CompressedWriteBuffer.h>
-#include <IO/HashingWriteBuffer.h>
+#include <IO/AbstractHashingWriteBuffer.h>
 #include <Storages/MergeTree/MergeTreeData.h>
 #include <Storages/MergeTree/IMergeTreeDataPart.h>
 #include <Disks/IDisk.h>
@@ -59,7 +59,9 @@ public:
             size_t max_compress_block_size_,
             const CompressionCodecPtr & marks_compression_codec_,
             size_t marks_compress_block_size_,
-            const WriteSettings & query_write_settings);
+            const WriteSettings & query_write_settings,
+            bool cryptographic_mode,
+            HashFn hash_function);
 
         String escaped_column_name;
         std::string data_file_extension;
@@ -67,15 +69,15 @@ public:
 
         /// compressed_hashing -> compressor -> plain_hashing -> plain_file
         std::unique_ptr<WriteBufferFromFileBase> plain_file;
-        HashingWriteBuffer plain_hashing;
+        AbstractHashingWriteBuffer plain_hashing;
         CompressedWriteBuffer compressor;
-        HashingWriteBuffer compressed_hashing;
+        AbstractHashingWriteBuffer compressed_hashing;
 
         /// marks_compressed_hashing -> marks_compressor -> marks_hashing -> marks_file
         std::unique_ptr<WriteBufferFromFileBase> marks_file;
-        HashingWriteBuffer marks_hashing;
+        AbstractHashingWriteBuffer marks_hashing;
         CompressedWriteBuffer marks_compressor;
-        HashingWriteBuffer marks_compressed_hashing;
+        AbstractHashingWriteBuffer marks_compressed_hashing;
         bool compress_marks;
 
         bool is_prefinalized = false;
@@ -144,9 +146,9 @@ protected:
     std::vector<size_t> skip_index_accumulated_marks;
 
     std::unique_ptr<WriteBufferFromFileBase> index_file_stream;
-    std::unique_ptr<HashingWriteBuffer> index_file_hashing_stream;
+    std::unique_ptr<AbstractHashingWriteBuffer> index_file_hashing_stream;
     std::unique_ptr<CompressedWriteBuffer> index_compressor_stream;
-    std::unique_ptr<HashingWriteBuffer> index_source_hashing_stream;
+    std::unique_ptr<AbstractHashingWriteBuffer> index_source_hashing_stream;
     bool compress_primary_key;
 
     DataTypes index_types;

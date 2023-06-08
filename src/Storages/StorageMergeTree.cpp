@@ -2021,6 +2021,7 @@ CheckResults StorageMergeTree::checkData(const ASTPtr & query, ContextPtr local_
 {
     CheckResults results;
     DataPartsVector data_parts;
+
     if (const auto & check_query = query->as<ASTCheckQuery &>(); check_query.partition)
     {
         String partition_id = getPartitionIDFromQuery(check_query.partition, local_context);
@@ -2028,6 +2029,12 @@ CheckResults StorageMergeTree::checkData(const ASTPtr & query, ContextPtr local_
     }
     else
         data_parts = getVisibleDataPartsVector(local_context);
+
+    auto settings = getSettings();
+    auto cryptographic_mode = settings->cryptographic_mode;
+    auto hash_function = settings->hash_function;
+
+    std::vector<uint128> checksums;
 
     for (auto & part : data_parts)
     {
@@ -2037,7 +2044,7 @@ CheckResults StorageMergeTree::checkData(const ASTPtr & query, ContextPtr local_
         {
             try
             {
-                auto calculated_checksums = checkDataPart(part, false);
+                auto calculated_checksums = checkDataPart(part, false, cryptographic_mode, hash_function);
                 calculated_checksums.checkEqual(part->checksums, true);
 
                 auto & part_mutable = const_cast<IMergeTreeDataPart &>(*part);
@@ -2056,16 +2063,33 @@ CheckResults StorageMergeTree::checkData(const ASTPtr & query, ContextPtr local_
         {
             try
             {
-                checkDataPart(part, true);
+                auto calculated_checksums = checkDataPart(part, true, cryptographic_mode, hash_function);
+
                 part->checkMetadata();
-                results.emplace_back(part->name, true, "");
+
+                auto partHash = part->checksums.getTotalChecksumUInt128();
+                std::string msg;
+                if (cryptographic_mode) {
+                    msg = fmt::format("Hash: {}", getHexUIntLowercase(partHash.second) + getHexUIntLowercase(partHash.first));
+                }
+                results.emplace_back(part->name, true, msg);
+
             }
             catch (const Exception & ex)
             {
                 results.emplace_back(part->name, false, ex.message());
             }
         }
+
+        auto checksum = part->MerkleTreeChecksum != uint128{0,0} ? part->MerkleTreeChecksum : part->checksums.getTotalChecksumUInt128();
+        checksums.emplace_back(checksum);
     }
+
+    if (cryptographic_mode) {
+        auto hash_of_all = chooseHashFunction(hash_function)(reinterpret_cast<char*>(checksums.data()), checksums.size() * sizeof(uint128));
+        results.emplace_back("root hash", true, getHexUIntLowercase(hash_of_all.second) + getHexUIntLowercase(hash_of_all.first));
+    }
+
     return results;
 }
 

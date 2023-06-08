@@ -10,6 +10,8 @@ namespace DB
 IMergeTreeDataPart::Checksums checkDataPart(
     MergeTreeData::DataPartPtr data_part,
     bool require_checksums,
+    bool cryptographic_mode,
+    HashFn hashFnType,
     std::function<bool()> is_cancelled = []{ return false; });
 
 IMergeTreeDataPart::Checksums checkDataPart(
@@ -19,6 +21,8 @@ IMergeTreeDataPart::Checksums checkDataPart(
     const MergeTreeDataPartType & part_type,
     const NameSet & files_without_checksums,
     bool require_checksums,
+    bool cryptographic_mode,
+    HashFn hashFnType,
     std::function<bool()> is_cancelled = []{ return false; });
 
 bool isNotEnoughMemoryErrorCode(int code);

@@ -18,6 +18,7 @@
 #include <Disks/StoragePolicy.h>
 #include <Common/SimpleIncrement.h>
 
+#include <IO/CryptographicHashingWriteBuffer.h>
 
 namespace DB
 {

@@ -391,6 +391,8 @@ CheckResult ReplicatedMergeTreePartCheckThread::checkPart(const String & part_na
                 checkDataPart(
                     part,
                     true,
+                    false, // error may be here
+                    HashFn::SipHash,
                     [this] { return need_stop.load(); });
 
                 if (need_stop)
